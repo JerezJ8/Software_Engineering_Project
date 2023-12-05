@@ -34,7 +34,7 @@ public class DataSet{
         NumData = count;
         //System.out.println("Total DataPoints = " + NumData); DataSet has 690 points.
         
-        Split(20);
+        Split(100);
 
         FindCategoricalFeatures(10);
 
@@ -90,8 +90,16 @@ public class DataSet{
         }
     }
 
+    public ArrayList<Data> getTrainingData(){
+        return Set;
+    }
 
-   public static void main (String [] args) throws Exception{
+    public int[] getCatInfo(){
+        return CategoricalFeat;
+    }
+
+
+    public static void main (String [] args) throws Exception{
         DataSet data = new DataSet(args[0]);
 
     }
