@@ -6,6 +6,8 @@ public class DataSet{
     int NumData;
     String [] DataHeader;
     int [] CategoricalFeat;
+
+    ArrayList<HashMap<String,Integer>> possible = new ArrayList<HashMap<String, Integer>>(); 
     // Set is used for training of the tree, TestSet is the set used to testing of the tree
     ArrayList<Data> Set = new ArrayList<Data>();
     ArrayList<Data> TestSet = new ArrayList<Data>();
@@ -15,9 +17,11 @@ public class DataSet{
         String line = scanner.nextLine();
         DataHeader = line.split(",");
         CategoricalFeat = new int [DataHeader.length];
-    
+        for (int i = 0; i < DataHeader.length; i++){
+            possible.add(new HashMap<String, Integer>());
+        }
+
         int count = 0;
-        // Could remove this
         for (String data : DataHeader){
             count++;
         }
@@ -32,17 +36,10 @@ public class DataSet{
             Set.add(data);
         }
         NumData = count;
-        //System.out.println("Total DataPoints = " + NumData); DataSet has 690 points.
-        
+
         Split(100);
-
-        FindCategoricalFeatures(10);
-
-        /* Tells you which column is a Categorical Feature
-        for (int i = 0; i < CategoricalFeat.length; i++){
-            System.out.println(DataHeader[i] + ": " + CategoricalFeat[i]);
-        }
-        */
+        FindCategoricalFeatures(15);
+        changeCategory();
     }
 
     // Parameter is the how many datapoints we want for our testing dataset
@@ -56,31 +53,25 @@ public class DataSet{
             Set.remove(num);
             max--;
         }
-        /*  Testing The Split
-        System.out.println("Training Data");
-        for (Data d : Set){
-            d.printData();
-        }
-        System.out.println("Testing Data");
-        for (Data d : TestSet){
-            d.printData();
-        }
-        */
     }
 
     private void FindCategoricalFeatures(int threshold){
         ArrayList<HashMap<String,String>> counter = new ArrayList<HashMap<String,String>>();
+        // Create a new hashmap to find the unique values of each column in data
         for (int i = 0; i < DataHeader.length; i++){
             HashMap<String, String> temp = new HashMap<String, String>();
             counter.add(temp);
         }
 
+        //Iterate through all data in the set
         for (Data d: Set){
+            // Add only unique values to the hashmap 
             for(int i = 0; i < d.column.length; i++){
                 counter.get(i).putIfAbsent(d.column[i], d.column[i]);
             }
         }
 
+        // if any column has many (more than threshold) unique values then label it as a continous value.
         for (int i = 0; i < counter.size(); i++){
             if (counter.get(i).size() <= threshold){
                 CategoricalFeat[i] = 1;
@@ -88,6 +79,37 @@ public class DataSet{
                 CategoricalFeat[i] = 0;
             }
         }
+
+    }
+
+
+    public void changeCategory(){
+        int [] counter  = new int [DataHeader.length];
+
+        for (Data data : Set){
+            for (int i = 0; i < data.column.length; i++){
+                if (CategoricalFeat[i] == 1){
+                    String val = data.column[i];
+                    try{
+                        Integer test = Integer.parseInt(data.column[i]);
+                        possible.get(i).putIfAbsent(val, test);
+                    } catch (NumberFormatException nfe){
+                        // if categorical and not already in number format
+                        if (!possible.get(i).containsKey(val)){
+                            data.column[i] = String.valueOf(counter[i]);
+                            possible.get(i).put(val,counter[i]);
+                            counter[i]++;
+                        }
+                        else{
+                            data.column[i] = String.valueOf(possible.get(i).get(val));
+                        }
+                    }
+
+
+                }
+            }
+        }  
+
     }
 
     public ArrayList<Data> getTrainingData(){
@@ -98,11 +120,16 @@ public class DataSet{
         return CategoricalFeat;
     }
 
-
-    public static void main (String [] args) throws Exception{
-        DataSet data = new DataSet(args[0]);
-
+    public ArrayList<HashMap<String,Integer>> getRange(){
+        return possible;
     }
 
+    public ArrayList<Data> getTestingData(){
+        return TestSet;
+    }
+
+    public int getNumOfFeat(){
+        return DataHeader.length -1;
+    }
 
 }

@@ -2,31 +2,39 @@ import java.util.*;
 
 public class TreeNode{
 
-    DataSet info;
-
     ArrayList<Data> startDataSet = new ArrayList<>();
     ArrayList<TreeNode> children = new ArrayList<>();
+    ArrayList<HashMap<String, Integer>> Categories = new ArrayList<HashMap<String, Integer>>();
 
+    int [] CategoricalFeat;
     int depth;
     int approved = 0;
     int rejected = 0;
     double accuracy;
+    boolean isLeaf = true;
+    int Branch_Index = -1;
+    String BranchOn = "";
+    // 1 indicates approved and 0 indicates rejection
+    int classify;
 
-    public TreeNode(DataSet dataSet){
-        info = dataSet;
-        startDataSet = dataSet.getTrainingData();
+    public TreeNode(ArrayList<Data> dataS, int [] CatFeat, ArrayList<HashMap<String, Integer>> Categ){
+        CategoricalFeat = CatFeat;
+        startDataSet = dataS;
+        Categories = Categ;
         accuracy = CalcAccuracy();
+        classify = (approved > rejected) ? 1 : 0;
     }
 
-    public TreeNode(ArrayList<Data> dataS, DataSet dataset){
-        info = dataset;
-        startDataSet = dataS;
-        accuracy = CalcAccuracy();
+    public int getBranchIndex(){
+        return Branch_Index;
+    }
+
+    public String getBranchValue(){
+        return BranchOn;
     }
 
     public void split(int index){
-
-        if (info.getCatInfo()[index] != 1){
+        if (CategoricalFeat[index] != 1){
             // Continous values
             bestContSplit(index);
         }
@@ -35,6 +43,7 @@ public class TreeNode{
             categoricalSplit(index);
         }
 
+        isLeaf = false;
     }
 
     private void bestContSplit(int index){
@@ -43,24 +52,27 @@ public class TreeNode{
         ArrayList <Double> possVal = findPossVal(index);
         ArrayList<TreeNode> bestC = new ArrayList<>();
         
-        double bestA = 0;
+        double bestA = 1.0;
         double bestVal = 0;
         
         for (Double val : possVal){
             continousSplit(index, val);
             double temp = CalcImpurity();
 
-            if (temp > bestA){
+            if (temp < bestA){
                 bestA = temp;
                 bestVal = val;
-                bestC = getChildNode();
+                bestC.clear();
+                for (TreeNode child : children){
+                    bestC.add(child);
+                }
             }
             children.clear();
         }
 
         children = bestC;
+        BranchOn = Double.toString(bestVal);
         
-        //return bestVal;
     }
 
     private void continousSplit(int index, double val){
@@ -68,7 +80,7 @@ public class TreeNode{
         ArrayList<Data> leftChild = new ArrayList<Data>();
         ArrayList<Data> rightChild = new ArrayList<Data>();
         for (Data data: startDataSet){
-            if (Double.valueOf(data.column[index]) < val){
+            if (Double.valueOf(data.column[index]) <= val){
                 leftChild.add(data);
             }
             else{
@@ -76,8 +88,8 @@ public class TreeNode{
             }
         }
 
-        TreeNode left = new TreeNode(leftChild, getDS());
-        TreeNode right = new TreeNode(rightChild, getDS());
+        TreeNode left = new TreeNode(leftChild, CategoricalFeat, Categories);
+        TreeNode right = new TreeNode(rightChild, CategoricalFeat, Categories);
         children.add(left);
         children.add(right);
     }
@@ -136,7 +148,26 @@ public class TreeNode{
 
 
     private void categoricalSplit(int index){
+        int maxC = Categories.get(index).size();
+        ArrayList<ArrayList<Data>> childDataSet = new ArrayList<ArrayList<Data>>();
+        // Initlaize list for childDS
+        for (int i = 0; i < maxC; i++) {
+            ArrayList<Data> temp = new ArrayList<>();
+            childDataSet.add(temp);
+        }
+        // Group based on the categories
+        for (Data data : startDataSet){
+            childDataSet.get(Integer.valueOf(data.column[index])).add(data);
+        }
+        // add child to children
+        for (int i = 0; i < maxC; i++){
+            TreeNode child = new TreeNode(childDataSet.get(i), CategoricalFeat, Categories);
+            children.add(child);
+        }
+
+        // Add another case for when a list in childDataSet is empty
         
+        BranchOn = "Categorical";
     }
 
 
@@ -152,20 +183,38 @@ public class TreeNode{
         return approved + rejected;
     }
 
-    public DataSet getDS(){
-        return info;
-    }
-
     public double getAccuracy(){
         return accuracy;
     }
 
+    public void addChild(TreeNode child){
+        children.add(child);
+    }
 
-    public static void main (String args[])throws Exception{
-        DataSet dataset = new DataSet(args[0]);
-        TreeNode test = new TreeNode(dataset);
-        test.split(1);
+    public boolean isPure(){
+        return (approved == 0 || rejected == 0);
+    }
 
+    public void deleteChildren(){
+        children.clear();
+    }
+
+    public void setBranchInfo(int index, String value){
+        Branch_Index = index;
+        BranchOn = value;
+    }
+
+    public boolean isLeafNode(){
+        if (isLeaf == true) return true;
+        if (children.size() <= 0) return true;
+        return false;
+    }
+
+    public void checkTotal(){
+        
+        if (children.size() <= 0){
+            System.out.println( "Approve: " + approved + " Rejected: " + rejected);
+        }
     }
 
 }
